@@ -52,7 +52,7 @@ export default function AdminPage() {
     return onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map((doc) => doc.data() as Message);
 
-      // ✅ 사용자 리스트 구성 (최근 메시지 기준 정렬)
+      // ✅ 사용자 리스트 구성 (관리자 제외, 최근 메시지 기준 정렬)
       const userMap: {
         [uid: string]: {
           uid: string;
@@ -63,6 +63,8 @@ export default function AdminPage() {
       } = {};
 
       msgs.forEach((msg) => {
+        if (msg.name === "Admin") return; // 관리자 제외
+
         const time = msg.createdAt?.toMillis?.() || new Date(msg.createdAt).getTime() || 0;
         if (!userMap[msg.uid] || time > userMap[msg.uid].lastMessageTime) {
           userMap[msg.uid] = {
