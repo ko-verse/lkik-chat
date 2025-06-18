@@ -1,6 +1,7 @@
 // src/firebase.ts
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth"; // ✅ 추가
 
 const firebaseConfig = {
   apiKey: "AIzaSyAelo6_0oMhbTnT0c_Tue1TfDvEi_kxSgs",
@@ -13,3 +14,4 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const auth = getAuth(app); // ✅ 이 줄 추가

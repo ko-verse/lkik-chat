@@ -1,3 +1,4 @@
+// AdminPage.tsx
 import { useEffect, useState, useRef } from "react";
 import {
   collection,
@@ -17,46 +18,83 @@ interface Message {
   country?: string;
 }
 
+const ADMIN_ID = "admin";
+const ADMIN_PW = "0991";
+
 export default function AdminPage() {
+  const [login, setLogin] = useState(false);
+  const [inputId, setInputId] = useState("");
+  const [inputPw, setInputPw] = useState("");
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [users, setUsers] = useState<{ uid: string; name: string; country?: string }[]>([]);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<{ [uid: string]: number }>({});
-  const [readUsers, setReadUsers] = useState<string[]>([]);
+  const [readUsers, setReadUsers] = useState<string[]>(
+    () => JSON.parse(localStorage.getItem("readUsers") || "[]")
+  );
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const handleLogin = () => {
+    if (inputId === ADMIN_ID && inputPw === ADMIN_PW) {
+      setLogin(true);
+    } else {
+      alert("관리자 아이디 또는 비밀번호가 틀렸습니다.");
+    }
+  };
+
   useEffect(() => {
+    if (!login) return;
+
     const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
     return onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map((doc) => doc.data() as Message);
 
-      const userMap: { [uid: string]: { uid: string; name: string; country?: string } } = {};
-      const unread: { [uid: string]: number } = {};
+      // ✅ 사용자 리스트 구성 (최근 메시지 기준 정렬)
+      const userMap: {
+        [uid: string]: {
+          uid: string;
+          name: string;
+          country?: string;
+          lastMessageTime: number;
+        };
+      } = {};
 
       msgs.forEach((msg) => {
-        if (!userMap[msg.uid]) {
+        const time = msg.createdAt?.toMillis?.() || new Date(msg.createdAt).getTime() || 0;
+        if (!userMap[msg.uid] || time > userMap[msg.uid].lastMessageTime) {
           userMap[msg.uid] = {
             uid: msg.uid,
             name: msg.name || "Unknown",
             country: msg.country || "Unknown",
+            lastMessageTime: time,
           };
         }
+      });
 
+      const sortedUsers = Object.values(userMap).sort(
+        (a, b) => b.lastMessageTime - a.lastMessageTime
+      );
+      setUsers(sortedUsers);
+
+      const unread: { [uid: string]: number } = {};
+      msgs.forEach((msg) => {
         if (msg.name !== "Admin" && !readUsers.includes(msg.uid)) {
           unread[msg.uid] = (unread[msg.uid] || 0) + 1;
         }
       });
-
-      setUsers(Object.values(userMap));
       setUnreadCounts(unread);
 
       if (selectedUser) {
         const filtered = msgs.filter((msg) => msg.uid === selectedUser && msg.createdAt);
         setMessages(filtered);
+      } else {
+        setMessages([]);
       }
     });
-  }, [selectedUser, readUsers]);
+  }, [selectedUser, login]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -81,9 +119,13 @@ export default function AdminPage() {
 
   const handleSelectUser = (uid: string) => {
     setSelectedUser(uid);
+
     if (!readUsers.includes(uid)) {
-      setReadUsers((prev) => [...prev, uid]);
+      const updated = [...readUsers, uid];
+      setReadUsers(updated);
+      localStorage.setItem("readUsers", JSON.stringify(updated));
     }
+
     setUnreadCounts((prev) => ({ ...prev, [uid]: 0 }));
   };
 
@@ -91,6 +133,30 @@ export default function AdminPage() {
     const date = timestamp?.toDate?.() || new Date(timestamp);
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
+
+  if (!login) {
+    return (
+      <div style={{ padding: 40, textAlign: "center" }}>
+        <h2>관리자 로그인</h2>
+        <input
+          placeholder="아이디"
+          value={inputId}
+          onChange={(e) => setInputId(e.target.value)}
+          style={{ margin: 5, padding: 5 }}
+        />
+        <br />
+        <input
+          placeholder="비밀번호"
+          type="password"
+          value={inputPw}
+          onChange={(e) => setInputPw(e.target.value)}
+          style={{ margin: 5, padding: 5 }}
+        />
+        <br />
+        <button onClick={handleLogin} style={{ marginTop: 10 }}>로그인</button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex" }}>

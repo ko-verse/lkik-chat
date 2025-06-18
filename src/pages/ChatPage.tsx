@@ -1,4 +1,4 @@
-// src/pages/ChatPage.tsx
+// ChatPage.tsx
 import { useEffect, useRef, useState } from "react";
 import {
   collection,
@@ -9,6 +9,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { useLocation } from "react-router-dom";
 
 interface Message {
   text: string;
@@ -19,16 +20,15 @@ interface Message {
   country?: string;
 }
 
-interface Props {
-  name: string;
-  uid: string;
-  country: string;
-}
+export default function ChatPage() {
+  const location = useLocation();
+  const { email = "anonymous", uid } = location.state || {};
 
-export default function ChatPage({ name, uid, country }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [saved, setSaved] = useState(false);
+  const [lastSavedLength, setLastSavedLength] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<string | null>(null);
 
@@ -64,21 +64,31 @@ export default function ChatPage({ name, uid, country }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (messages.length > lastSavedLength) {
+      setSaved(false);
+    }
+  }, [messages]);
+
   const handleSend = async () => {
     if (!input.trim()) return;
     await addDoc(collection(db, "messages"), {
       text: input,
-      name,
+      name: email,
       uid,
-      country,
       createdAt: serverTimestamp(),
     });
     setInput("");
-    setUnreadCount(0); // 메시지를 보낼 때 읽은 것으로 처리
+    setUnreadCount(0);
   };
 
   const handleFocus = () => {
-    setUnreadCount(0); // 포커스 시 읽은 것으로 처리
+    setUnreadCount(0);
+  };
+
+  const handleSave = () => {
+    setSaved(true);
+    setLastSavedLength(messages.length);
   };
 
   const formatTime = (timestamp: any) => {
@@ -88,7 +98,7 @@ export default function ChatPage({ name, uid, country }: Props) {
   };
 
   return (
-    <div onClick={handleFocus}>
+    <div onClick={handleFocus} style={{ padding: 20 }}>
       <h2>
         💬 Chat Room{" "}
         {unreadCount > 0 && (
@@ -106,6 +116,7 @@ export default function ChatPage({ name, uid, country }: Props) {
           </span>
         )}
       </h2>
+
       <div
         style={{
           height: 500,
@@ -144,9 +155,7 @@ export default function ChatPage({ name, uid, country }: Props) {
 
           const nameDisplay = (
             <div style={{ fontWeight: "bold", marginBottom: 5 }}>
-              {msg.name === "Admin"
-                ? "Admin (Korea)"
-                : `${msg.name || "Unknown"} (${msg.country || "Unknown"})`}
+              {msg.name === "Admin" ? "Admin (Korea)" : msg.name || "Unknown"}
             </div>
           );
 
@@ -166,6 +175,7 @@ export default function ChatPage({ name, uid, country }: Props) {
         })}
         <div ref={bottomRef} />
       </div>
+
       <div style={{ marginTop: 10 }}>
         <input
           style={{ width: "80%" }}
@@ -175,6 +185,16 @@ export default function ChatPage({ name, uid, country }: Props) {
           placeholder="Type your message"
         />
         <button onClick={handleSend}>Send</button>
+      </div>
+
+      <div style={{ marginTop: 20 }}>
+        {saved ? (
+          <span style={{ color: "green", fontWeight: "bold" }}>
+            ✅ Saved
+          </span>
+        ) : (
+          <button onClick={handleSave}>📅 Save chat history</button>
+        )}
       </div>
     </div>
   );
