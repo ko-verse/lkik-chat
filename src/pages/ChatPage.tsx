@@ -9,7 +9,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface Message {
   text: string;
@@ -21,6 +21,7 @@ interface Message {
 
 export default function ChatPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { email = "", uid = "" } = location.state || {};
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -77,6 +78,11 @@ export default function ChatPage() {
     setUnreadCount(0);
   };
 
+  const handleLogout = () => {
+    localStorage.clear(); // 로그인 상태 초기화 (선택사항)
+    navigate("/"); // 로그인 페이지로 이동
+  };
+
   const formatTime = (timestamp: any) => {
     const date = timestamp?.toDate?.();
     if (!date) return "";
@@ -85,7 +91,10 @@ export default function ChatPage() {
 
   return (
     <div onClick={handleFocus} style={{ padding: 20 }}>
-      <h2>💬 Chat Room</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h2>💬 Chat Room</h2>
+        <button onClick={handleLogout}>Logout</button>
+      </div>
 
       <div
         style={{
