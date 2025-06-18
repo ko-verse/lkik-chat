@@ -1,7 +1,11 @@
 // LoginPage.tsx
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+} from "firebase/auth";
 import { auth } from "../firebase";
 import logo from "../assets/logo.png";
 
@@ -69,6 +73,11 @@ export default function LoginPage() {
         style={{ marginBottom: 10 }}
       />
       <br />
+      {!isLoginMode && (
+        <p style={{ fontSize: 12, color: "gray", marginBottom: 10 }}>
+          * Password must be at least 6 characters long.
+        </p>
+      )}
       <button onClick={handleAuth}>
         {isLoginMode ? "Login" : "Start Chat"}
       </button>
