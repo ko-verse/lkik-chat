@@ -15,6 +15,7 @@ interface Message {
   name: string;
   createdAt: any;
   uid: string;
+  to?: string;
   country?: string;
 }
 
@@ -27,7 +28,9 @@ interface Props {
 export default function ChatPage({ name, uid, country }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastMessageRef = useRef<string | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
@@ -35,8 +38,24 @@ export default function ChatPage({ name, uid, country }: Props) {
       const msgs = snapshot.docs
         .map((doc) => doc.data() as Message)
         .filter(
-          (msg) => msg.createdAt && (msg.uid === uid || msg.name === "Admin")
+          (msg) =>
+            msg.createdAt &&
+            (msg.uid === uid || (msg.uid === "admin" && msg.to === uid))
         );
+
+      const newAdminMessages = msgs.filter(
+        (msg) =>
+          msg.name === "Admin" &&
+          msg.to === uid &&
+          msg.text !== lastMessageRef.current
+      );
+
+      if (newAdminMessages.length > 0) {
+        setUnreadCount((prev) => prev + newAdminMessages.length);
+        lastMessageRef.current =
+          newAdminMessages[newAdminMessages.length - 1].text;
+      }
+
       setMessages(msgs);
     });
   }, [uid]);
@@ -55,6 +74,11 @@ export default function ChatPage({ name, uid, country }: Props) {
       createdAt: serverTimestamp(),
     });
     setInput("");
+    setUnreadCount(0); // 메시지를 보낼 때 읽은 것으로 처리
+  };
+
+  const handleFocus = () => {
+    setUnreadCount(0); // 포커스 시 읽은 것으로 처리
   };
 
   const formatTime = (timestamp: any) => {
@@ -64,8 +88,24 @@ export default function ChatPage({ name, uid, country }: Props) {
   };
 
   return (
-    <div>
-      <h2>💬 Chat Room</h2>
+    <div onClick={handleFocus}>
+      <h2>
+        💬 Chat Room{" "}
+        {unreadCount > 0 && (
+          <span
+            style={{
+              background: "red",
+              color: "white",
+              borderRadius: "50%",
+              padding: "2px 8px",
+              fontSize: 14,
+              marginLeft: 10,
+            }}
+          >
+            {unreadCount}
+          </span>
+        )}
+      </h2>
       <div
         style={{
           height: 500,
@@ -76,7 +116,6 @@ export default function ChatPage({ name, uid, country }: Props) {
       >
         {messages.map((msg, i) => {
           const isOwn = msg.uid === uid && msg.name !== "Admin";
-          const isAdmin = msg.name === "Admin";
           const alignRight = isOwn;
           const bubbleStyle: React.CSSProperties = {
             maxWidth: "60%",
@@ -105,7 +144,9 @@ export default function ChatPage({ name, uid, country }: Props) {
 
           const nameDisplay = (
             <div style={{ fontWeight: "bold", marginBottom: 5 }}>
-              {msg.name || "Unknown"} ({msg.country || "Unknown"})
+              {msg.name === "Admin"
+                ? "Admin (Korea)"
+                : `${msg.name || "Unknown"} (${msg.country || "Unknown"})`}
             </div>
           );
 
